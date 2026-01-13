@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function email() { return request.auth.token.email; }
+    function allowedDomain() {
+      return email().matches(".*@colegioprovidencia\\.cl$");
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn() && allowedDomain();
+      allow write: if false; // solo admin (ajustable)
+    }
+
+    match /assessments/{id} {
+      allow read: if isSignedIn() && allowedDomain();
+      allow create, update, delete: if isSignedIn() && allowedDomain()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["teacher","admin","utp"];
+    }
+
+    match /attempts/{id} {
+      allow read: if isSignedIn() && allowedDomain()
+        && (resource.data.studentUid == request.auth.uid
+            || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["teacher","admin","utp"]);
+      allow create: if isSignedIn() && allowedDomain();
+      allow update, delete: if false;
+    }
+  }
+}
