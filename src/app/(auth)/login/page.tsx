@@ -4,7 +4,7 @@ import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { useState } from "react";
 
-const ALLOWED_DOMAIN = process.env.NEXT_PUBLIC_ALLOWED_DOMAIN; // ej: "colegioprovidencia.cl"
+const ALLOWED_DOMAIN = process.env.NEXT_PUBLIC_ALLOWED_DOMAIN;
 
 export default function LoginPage() {
   const [msg, setMsg] = useState<string>("");
@@ -20,15 +20,32 @@ export default function LoginPage() {
 
       if (ALLOWED_DOMAIN && domain.toLowerCase() !== ALLOWED_DOMAIN.toLowerCase()) {
         await signOut(auth);
-        setMsg(`Correo no permitido (${domain}). Usa tu correo institucional.`);
+        setMsg(`Correo no permitido (${domain}). Usa tu correo institucional @${ALLOWED_DOMAIN}`);
         return;
       }
 
-      setMsg(`✅ Bienvenido/a: ${email}`);
-      // Luego aquí redirigimos según rol (docente/estudiante/UTP)
-      // location.href = "/teacher" o "/student" según corresponda
+      const idToken = await res.user.getIdToken();
+
+      const r = await fetch("/api/users/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken })
+      });
+
+      const data = await r.json();
+      if (!data.ok) {
+        setMsg("❌ No se pudo validar el usuario (sync).");
+        return;
+      }
+
+      const role = data.role as "teacher" | "student" | "utp";
+      setMsg(`✅ Bienvenido/a: ${email} (${role})`);
+
+      if (role === "teacher") location.href = "/teacher";
+      else if (role === "utp") location.href = "/utp";
+      else location.href = "/student";
     } catch (e: any) {
-      setMsg("❌ No se pudo iniciar sesión. Revisa dominios autorizados y popups.");
+      setMsg("❌ Error de login. Revisa popups y dominios autorizados en Firebase.");
     }
   }
 
@@ -36,7 +53,7 @@ export default function LoginPage() {
     <main style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
       <h1 style={{ fontSize: 28, fontWeight: 800 }}>Acceso – Provi Evaluaciones</h1>
       <p style={{ marginTop: 8, opacity: 0.85 }}>
-        Ingresa con tu correo institucional para crear o rendir evaluaciones.
+        Solo correos institucionales: <b>@{ALLOWED_DOMAIN}</b>
       </p>
 
       <div style={{ marginTop: 16, padding: 16, border: "1px solid #ddd", borderRadius: 12 }}>
@@ -55,10 +72,6 @@ export default function LoginPage() {
         </button>
 
         {msg ? <p style={{ marginTop: 12 }}>{msg}</p> : null}
-
-        <p style={{ marginTop: 10, fontSize: 13, opacity: 0.7 }}>
-          *Solo correos del dominio del colegio.
-        </p>
       </div>
 
       <div style={{ marginTop: 18 }}>
