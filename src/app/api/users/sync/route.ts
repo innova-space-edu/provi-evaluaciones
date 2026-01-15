@@ -4,8 +4,10 @@ import { adminAuth, adminDb } from "@/lib/firebase/admin";
 type Role = "teacher" | "student" | "utp";
 
 function pickRoleByEmail(email: string): Role {
-  const u = (process.env.UTP_EMAILS || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
-  const t = (process.env.TEACHER_EMAILS || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+  const u = (process.env.UTP_EMAILS || "")
+    .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+  const t = (process.env.TEACHER_EMAILS || "")
+    .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
 
   const e = email.toLowerCase();
   if (u.includes(e)) return "utp";
@@ -29,7 +31,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "No email in token" }, { status: 400 });
     }
 
-    // Dominio permitido (doble seguridad server-side)
     const allowed = (process.env.NEXT_PUBLIC_ALLOWED_DOMAIN || "").toLowerCase();
     const domain = (email.split("@")[1] || "").toLowerCase();
     if (allowed && domain !== allowed) {
@@ -42,13 +43,7 @@ export async function POST(request: Request) {
     if (!snap.exists) {
       const role = pickRoleByEmail(email);
       await userRef.set(
-        {
-          uid,
-          email,
-          role,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
+        { uid, email, role, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
         { merge: true }
       );
       return NextResponse.json({ ok: true, role, created: true });
@@ -56,10 +51,15 @@ export async function POST(request: Request) {
 
     const data = snap.data() || {};
     const role = (data.role as string) || "student";
-
     await userRef.set({ updatedAt: new Date().toISOString() }, { merge: true });
+
     return NextResponse.json({ ok: true, role, created: false });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: "Sync failed" }, { status: 500 });
+    // 👇 Esto se verá en Render Logs
+    console.error("[/api/users/sync] ERROR:", e?.message || e, e?.stack || "");
+    return NextResponse.json(
+      { ok: false, error: "Server sync error (see logs)" },
+      { status: 500 }
+    );
   }
 }
