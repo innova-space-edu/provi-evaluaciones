@@ -10,12 +10,13 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     }
 
     const data = snap.data() || {};
-    // Solo devolvemos lo necesario para rendir
+    // Devolvemos lo necesario para rendir (sin datos sensibles)
     const assessment = {
       id: snap.id,
       title: data.title || "Evaluación",
-      passPct: data.passPct ?? 60,
+      durationMinutes: data.durationMinutes ?? 20,
       questions: data.questions || [],
+      isPublished: data.isPublished ?? false,
     };
 
     return NextResponse.json({ ok: true, assessment });
