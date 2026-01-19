@@ -1,25 +1,21 @@
-export function scoreToGradeChile60(
-  score: number,
-  maxScore: number
-): number {
-  if (maxScore <= 0) return 1.0;
+export function pctToGrade(pct: number): number {
+  // pct: 0..100
+  const p = Math.max(0, Math.min(100, pct));
 
-  const p = score / maxScore; // 0..1
-  const exigency = 0.60;
-
-  let grade: number;
-
-  if (p <= exigency) {
-    // lineal entre 1.0 (0%) y 4.0 (60%)
-    grade = 1.0 + (p / exigency) * (4.0 - 1.0);
+  // regla: 60% => 4.0
+  // 0% => 1.0
+  // 100% => 7.0
+  if (p <= 60) {
+    // 1.0 a 4.0 (hasta 60%)
+    const g = 1 + (p / 60) * 3; // 1 + 3 = 4
+    return round1(g);
   } else {
-    // lineal entre 4.0 (60%) y 7.0 (100%)
-    grade = 4.0 + ((p - exigency) / (1.0 - exigency)) * (7.0 - 4.0);
+    // 4.0 a 7.0 (60% a 100%)
+    const g = 4 + ((p - 60) / 40) * 3; // 4 + 3 = 7
+    return round1(g);
   }
+}
 
-  // redondeo a 1 decimal (típico)
-  const rounded = Math.round(grade * 10) / 10;
-
-  // acotar
-  return Math.min(7.0, Math.max(1.0, rounded));
+function round1(x: number) {
+  return Math.round(x * 10) / 10;
 }
