@@ -1,34 +1,41 @@
-type Props = { params: { attemptId: string } };
+"use client";
 
-export default function StudentResultPage({ params }: Props) {
-  return (
-    <main style={{ padding: 24, maxWidth: 900, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 26, fontWeight: 800 }}>Resultados</h1>
-      <p style={{ marginTop: 8, opacity: 0.85 }}>
-        Intento ID: <code>{params.attemptId}</code>
-      </p>
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import ResultsView from "@/components/ResultsView";
+import type { Attempt } from "@/types";
 
-      <div style={{ marginTop: 16, padding: 16, border: "1px solid #ddd", borderRadius: 12 }}>
-        <p style={{ margin: 0, fontWeight: 700 }}>Pendiente de conectar</p>
-        <ul style={{ marginTop: 10 }}>
-          <li>Puntaje</li>
-          <li>Nota (exigencia 60% = 4.0)</li>
-          <li>Lista de errores + explicación</li>
-        </ul>
+export default function StudentResultsPage() {
+  const params = useParams<{ attemptId: string }>();
+  const attemptId = params?.attemptId;
 
-        <p style={{ marginTop: 10, fontSize: 13, opacity: 0.75 }}>
-          Luego conectamos esta página a Firestore: <code>attempts/{params.attemptId}</code>.
-        </p>
-      </div>
+  const [loading, setLoading] = useState(true);
+  const [attempt, setAttempt] = useState<Attempt | null>(null);
+  const [err, setErr] = useState("");
 
-      <div style={{ marginTop: 18, display: "flex", gap: 12 }}>
-        <a href="/student" style={{ textDecoration: "none", fontWeight: 700 }}>
-          ← Panel Estudiante
-        </a>
-        <a href="/" style={{ textDecoration: "none", fontWeight: 700 }}>
-          Inicio
-        </a>
-      </div>
-    </main>
-  );
+  useEffect(() => {
+    async function load() {
+      try {
+        setErr("");
+        setLoading(true);
+
+        const r = await fetch(`/api/public/attempts/${attemptId}`);
+        const data = await r.json();
+
+        if (!r.ok || !data.ok) throw new Error(data?.error || "No se pudo cargar");
+        setAttempt(data.attempt);
+      } catch (e: any) {
+        setErr(e?.message || "Error");
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (attemptId) load();
+  }, [attemptId]);
+
+  if (loading) return <div>Cargando resultados...</div>;
+  if (err) return <div style={{ color: "#ff8080" }}>❌ {err}</div>;
+  if (!attempt) return <div>No encontrado.</div>;
+
+  return <ResultsView attempt={attempt} />;
 }
