@@ -13,9 +13,10 @@ export default function QuizRunner({
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [sending, setSending] = useState(false);
 
-  const maxScore = useMemo(() => {
-    return questions.reduce((acc, q) => acc + (q.points || 0), 0);
-  }, [questions]);
+  const maxScore = useMemo(
+    () => questions.reduce((acc, q) => acc + (q.points || 0), 0),
+    [questions]
+  );
 
   function setAnswer(qid: string, value: any) {
     setAnswers((prev) => ({ ...prev, [qid]: value }));
@@ -55,9 +56,9 @@ export default function QuizRunner({
 
           {q.type === "mcq" ? (
             <div style={{ display: "grid", gap: 8 }}>
-              {q.choices.map((c) => (
+              {q.options.map((opt, i) => (
                 <label
-                  key={c.id}
+                  key={i}
                   style={{
                     display: "flex",
                     gap: 10,
@@ -67,7 +68,7 @@ export default function QuizRunner({
                     borderRadius: 12,
                     border: "1px solid rgba(255,255,255,0.06)",
                     background:
-                      answers[q.id] === c.id
+                      answers[q.id] === i
                         ? "rgba(43,92,255,0.18)"
                         : "transparent",
                   }}
@@ -75,30 +76,16 @@ export default function QuizRunner({
                   <input
                     type="radio"
                     name={q.id}
-                    checked={answers[q.id] === c.id}
-                    onChange={() => setAnswer(q.id, c.id)}
+                    checked={answers[q.id] === i}
+                    onChange={() => setAnswer(q.id, i)}
                   />
-                  <span>{c.text}</span>
+                  <span>{opt}</span>
                 </label>
               ))}
             </div>
-          ) : (
+          ) : q.type === "truefalse" ? (
             <div style={{ display: "flex", gap: 10 }}>
-              <label
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "center",
-                  padding: 8,
-                  borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  cursor: "pointer",
-                  background:
-                    answers[q.id] === true
-                      ? "rgba(43,92,255,0.18)"
-                      : "transparent",
-                }}
-              >
+              <label style={tfStyle(answers[q.id] === true)}>
                 <input
                   type="radio"
                   name={q.id}
@@ -108,21 +95,7 @@ export default function QuizRunner({
                 Verdadero
               </label>
 
-              <label
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "center",
-                  padding: 8,
-                  borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  cursor: "pointer",
-                  background:
-                    answers[q.id] === false
-                      ? "rgba(43,92,255,0.18)"
-                      : "transparent",
-                }}
-              >
+              <label style={tfStyle(answers[q.id] === false)}>
                 <input
                   type="radio"
                   name={q.id}
@@ -131,6 +104,25 @@ export default function QuizRunner({
                 />
                 Falso
               </label>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              <input
+                value={String(answers[q.id] ?? "")}
+                onChange={(e) => setAnswer(q.id, e.target.value)}
+                placeholder="Escribe tu respuesta"
+                style={{
+                  padding: "12px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  background: "rgba(255,255,255,0.05)",
+                  color: "white",
+                  outline: "none",
+                }}
+              />
+              <div style={{ fontSize: 12, opacity: 0.7 }}>
+                Responde con texto (por ejemplo: H2O)
+              </div>
             </div>
           )}
         </div>
@@ -153,4 +145,17 @@ export default function QuizRunner({
       </button>
     </div>
   );
+}
+
+function tfStyle(active: boolean) {
+  return {
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+    padding: 8,
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.06)",
+    cursor: "pointer",
+    background: active ? "rgba(43,92,255,0.18)" : "transparent",
+  } as React.CSSProperties;
 }
