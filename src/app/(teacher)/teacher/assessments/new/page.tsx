@@ -1,33 +1,133 @@
-export default function TeacherNewAssessmentPage() {
+"use client";
+
+import { useState } from "react";
+import FileDropCsv from "@/components/FileDropCsv";
+import { getAuth } from "firebase/auth";
+import { app } from "@/lib/firebase/client";
+
+export default function NewAssessmentPage() {
+  const [title, setTitle] = useState("Evaluación 1");
+  const [assessmentId, setAssessmentId] = useState<string>("");
+  const [msg, setMsg] = useState<string>("");
+
+  const [csvText, setCsvText] = useState<string>("");
+
+  async function createAssessment() {
+    setMsg("");
+    try {
+      // MVP: id local. Luego lo hacemos real con /api/assessments/create
+      const id = `assess_${Date.now()}`;
+      setAssessmentId(id);
+      setMsg("✅ Evaluación creada. Ahora sube la lista CSV.");
+    } catch (e: any) {
+      setMsg("❌ Error creando evaluación");
+    }
+  }
+
+  async function uploadRoster() {
+    setMsg("");
+    try {
+      if (!assessmentId) {
+        setMsg("Primero crea la evaluación.");
+        return;
+      }
+      if (!csvText) {
+        setMsg("Sube el CSV primero.");
+        return;
+      }
+
+      const auth = getAuth(app);
+      const user = auth.currentUser;
+      if (!user) {
+        setMsg("Debes iniciar sesión.");
+        return;
+      }
+      const idToken = await user.getIdToken(true);
+
+      const r = await fetch("/api/rosters/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, assessmentId, csvText }),
+      });
+
+      const data = await r.json();
+      if (!r.ok || !data.ok) {
+        setMsg(`❌ No se pudo subir roster: ${data?.error || r.status}`);
+        return;
+      }
+
+      setMsg(`✅ Lista cargada: ${data.count} estudiantes.`);
+    } catch (e: any) {
+      setMsg("❌ Error subiendo lista.");
+    }
+  }
+
   return (
-    <main style={{ padding: 24, maxWidth: 900, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 26, fontWeight: 800 }}>Crear evaluación</h1>
-      <p style={{ marginTop: 8, opacity: 0.85 }}>
-        En esta pantalla el docente creará la evaluación y subirá la lista de estudiantes (CSV).
-      </p>
+    <div style={{ display: "grid", gap: 14 }}>
+      <h2 style={{ margin: 0 }}>Nueva evaluación</h2>
 
-      <div style={{ marginTop: 16, padding: 16, border: "1px solid #ddd", borderRadius: 12 }}>
-        <p style={{ margin: 0, fontWeight: 700 }}>MVP (pendiente de conectar)</p>
-        <ul style={{ marginTop: 10 }}>
-          <li>Título, duración, intentos</li>
-          <li>Subida CSV con correos</li>
-          <li>Editor de preguntas (alternativas / V-F / respuesta corta)</li>
-          <li>Publicación</li>
-        </ul>
-
-        <p style={{ marginTop: 10, fontSize: 13, opacity: 0.75 }}>
-          Luego conectamos esta pantalla con <code>/api/assessments/create</code>.
-        </p>
+      <div style={{ display: "grid", gap: 8 }}>
+        <label style={{ fontWeight: 700 }}>Título</label>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          style={{
+            padding: "12px 12px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.15)",
+            background: "rgba(255,255,255,0.05)",
+            color: "white",
+            outline: "none",
+          }}
+        />
       </div>
 
-      <div style={{ marginTop: 18, display: "flex", gap: 12 }}>
-        <a href="/teacher" style={{ textDecoration: "none", fontWeight: 700 }}>
-          ← Volver
-        </a>
-        <a href="/" style={{ textDecoration: "none", fontWeight: 700 }}>
-          Inicio
-        </a>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button
+          onClick={createAssessment}
+          style={{
+            background: "#2b5cff",
+            border: "none",
+            color: "white",
+            padding: "10px 12px",
+            borderRadius: 12,
+            fontWeight: 900,
+            cursor: "pointer",
+          }}
+        >
+          Crear evaluación
+        </button>
+
+        {assessmentId ? (
+          <div style={{ opacity: 0.9, alignSelf: "center" }}>
+            ID: <b>{assessmentId}</b>
+          </div>
+        ) : null}
       </div>
-    </main>
+
+      <FileDropCsv onText={(t) => setCsvText(t)} />
+
+      <button
+        onClick={uploadRoster}
+        style={{
+          background: assessmentId ? "#21c55d" : "rgba(255,255,255,0.15)",
+          border: "none",
+          color: "white",
+          padding: "10px 12px",
+          borderRadius: 12,
+          fontWeight: 900,
+          cursor: "pointer",
+          opacity: assessmentId ? 1 : 0.6,
+        }}
+      >
+        Subir lista (CSV)
+      </button>
+
+      {msg ? <div style={{ paddingTop: 6, opacity: 0.95 }}>{msg}</div> : null}
+
+      <div style={{ fontSize: 13, opacity: 0.75, marginTop: 6 }}>
+        Próximo: editor de preguntas + link para estudiantes + corrección automática.
+      </div>
+    </div>
   );
 }
